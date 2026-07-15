@@ -36,14 +36,17 @@ export default async function handler(req, res) {
         return sendJson(res, 400, { error: 'Lista de produtos invalida.' });
       }
 
-      await db`DELETE FROM products`;
+      const savedIds = [];
 
       for (let index = 0; index < products.length; index += 1) {
         const product = products[index];
+        const id = product.id || randomUUID();
+        savedIds.push(id);
+
         await db`
           INSERT INTO products (id, name, cost, price, completed, position, updated_at)
           VALUES (
-            ${product.id || randomUUID()},
+            ${id},
             ${String(product.name || '').trim()},
             ${String(product.cost || '')},
             ${String(product.price || '')},
@@ -51,7 +54,20 @@ export default async function handler(req, res) {
             ${index},
             NOW()
           )
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            cost = EXCLUDED.cost,
+            price = EXCLUDED.price,
+            completed = EXCLUDED.completed,
+            position = EXCLUDED.position,
+            updated_at = NOW()
         `;
+      }
+
+      if (savedIds.length > 0) {
+        await db`DELETE FROM products WHERE id <> ALL(${savedIds})`;
+      } else {
+        await db`DELETE FROM products`;
       }
 
       const rows = await db`

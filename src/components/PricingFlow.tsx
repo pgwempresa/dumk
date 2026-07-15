@@ -6,6 +6,8 @@ import { ChevronRight, ChevronLeft } from 'lucide-react';
 export function PricingFlow({ products, setProducts }: { products: Product[], setProducts: (p: Product[]) => void }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [calculationMode, setCalculationMode] = useState<'multiplier' | 'percent'>('multiplier');
+  const [calculationValue, setCalculationValue] = useState('2.5');
 
   useEffect(() => {
     const firstIncomplete = products.findIndex(p => !p.completed);
@@ -46,6 +48,62 @@ export function PricingFlow({ products, setProducts }: { products: Product[], se
     setProducts(newProducts);
   };
 
+  const formatMoneyInput = (value: number) => {
+    if (!Number.isFinite(value)) return '';
+    return value.toFixed(2);
+  };
+
+  const parseDecimal = (value: string) => {
+    return parseFloat(value.replace(',', '.')) || 0;
+  };
+
+  const calculatePrice = (mode = calculationMode, value = calculationValue, baseCost = currentProduct.cost) => {
+    const parsedCost = parseDecimal(baseCost);
+    const parsedValue = parseDecimal(value);
+
+    if (parsedCost <= 0 || parsedValue <= 0) return '';
+
+    if (mode === 'percent') {
+      return formatMoneyInput(parsedCost * (1 + parsedValue / 100));
+    }
+
+    return formatMoneyInput(parsedCost * parsedValue);
+  };
+
+  const applyCalculatedPrice = (
+    mode = calculationMode,
+    value = calculationValue,
+    baseCost = currentProduct.cost,
+  ) => {
+    const nextPrice = calculatePrice(mode, value, baseCost);
+    if (nextPrice) {
+      handleUpdate({ price: nextPrice });
+    }
+  };
+
+  const handleCostChange = (value: string) => {
+    const updates: Partial<Product> = { cost: value };
+    const nextPrice = calculatePrice(calculationMode, calculationValue, value);
+
+    if (nextPrice) {
+      updates.price = nextPrice;
+    }
+
+    handleUpdate(updates);
+  };
+
+  const handleCalculationModeChange = (mode: 'multiplier' | 'percent') => {
+    const nextValue = mode === 'multiplier' ? '2.5' : '300';
+    setCalculationMode(mode);
+    setCalculationValue(nextValue);
+    applyCalculatedPrice(mode, nextValue);
+  };
+
+  const handleCalculationValueChange = (value: string) => {
+    setCalculationValue(value);
+    applyCalculatedPrice(calculationMode, value);
+  };
+
   const handleSaveAndNext = () => {
     const newProducts = [...products];
     newProducts[currentIndex] = { ...currentProduct, completed: true };
@@ -73,6 +131,8 @@ export function PricingFlow({ products, setProducts }: { products: Product[], se
   const price = parseFloat(currentProduct.price) || 0;
   const profit = price - cost;
   const margin = cost > 0 ? (profit / cost) * 100 : 0;
+  const quickMultipliers = ['2', '2.5', '3'];
+  const quickPercents = ['100', '200', '300'];
 
   return (
     <div className="max-w-2xl w-full">
@@ -114,7 +174,7 @@ export function PricingFlow({ products, setProducts }: { products: Product[], se
                     <input 
                       type="number"
                       value={currentProduct.cost}
-                      onChange={(e) => handleUpdate({ cost: e.target.value })}
+                      onChange={(e) => handleCostChange(e.target.value)}
                       className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-xl font-bold focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none"
                       placeholder="0.00"
                     />
@@ -133,6 +193,70 @@ export function PricingFlow({ products, setProducts }: { products: Product[], se
                       placeholder="0.00"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Cálculo rápido</label>
+                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+                      <button
+                        type="button"
+                        onClick={() => handleCalculationModeChange('multiplier')}
+                        className={`py-2.5 text-sm font-bold rounded-lg transition-all ${calculationMode === 'multiplier' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Multiplicador
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCalculationModeChange('percent')}
+                        className={`py-2.5 text-sm font-bold rounded-lg transition-all ${calculationMode === 'percent' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Porcentagem
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="w-full md:w-40">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                      {calculationMode === 'multiplier' ? 'Fator' : 'Margem'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={calculationValue}
+                        onChange={(e) => handleCalculationValueChange(e.target.value)}
+                        className="w-full pr-10 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none"
+                        placeholder={calculationMode === 'multiplier' ? '2.5' : '300'}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                        {calculationMode === 'multiplier' ? 'x' : '%'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => applyCalculatedPrice()}
+                    disabled={cost <= 0}
+                    className="px-5 py-3 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white rounded-xl text-sm font-bold transition-all"
+                  >
+                    Aplicar
+                  </button>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(calculationMode === 'multiplier' ? quickMultipliers : quickPercents).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleCalculationValueChange(preset)}
+                      className="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-rose-50 hover:border-rose-100 hover:text-rose-700 text-xs font-bold text-slate-600 transition-all"
+                    >
+                      {calculationMode === 'multiplier' ? `${preset}x` : `${preset}%`}
+                    </button>
+                  ))}
                 </div>
               </div>
 

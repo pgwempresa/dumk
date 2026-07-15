@@ -131,6 +131,11 @@ export function PricingFlow({ products, setProducts }: { products: Product[], se
   const price = parseFloat(currentProduct.price) || 0;
   const profit = price - cost;
   const margin = cost > 0 ? (profit / cost) * 100 : 0;
+  const paymentFees = [
+    { name: 'Pix', description: '0,99% por venda', fee: price * 0.0099 },
+    { name: 'Cartao de credito', description: '4,69% + R$ 0,35 por venda', fee: price * 0.0469 + 0.35 },
+    { name: 'Boleto', description: 'R$ 2,39 por venda', fee: price > 0 ? 2.39 : 0 },
+  ];
   const quickMultipliers = ['2', '2.5', '3'];
   const quickPercents = ['100', '200', '300'];
 
@@ -275,6 +280,47 @@ export function PricingFlow({ products, setProducts }: { products: Product[], se
                     <span className={`w-2 h-2 rounded-full ${currentProduct.completed ? 'bg-green-400' : 'bg-amber-400'}`}></span>
                     <span className="text-sm font-semibold text-slate-600">{currentProduct.completed ? 'Concluído' : 'Pendente'}</span>
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between mb-4 gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Taxas por forma de pagamento</p>
+                    <h3 className="text-base font-bold text-slate-800">Resultado liquido da venda</h3>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {paymentFees.map((payment) => {
+                    const netRevenue = Math.max(price - payment.fee, 0);
+                    const netProfit = netRevenue - cost;
+
+                    return (
+                      <div key={payment.name} className="rounded-xl border border-slate-200 bg-white p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div>
+                            <p className="text-sm font-bold text-slate-800">{payment.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{payment.description}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-500">Taxa</span>
+                            <span className="font-bold text-red-500">R$ {payment.fee.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-500">Liquido</span>
+                            <span className="font-bold text-slate-700">R$ {netRevenue.toFixed(2)}</span>
+                          </div>
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-500">Lucro liquido</span>
+                            <span className={`font-bold ${netProfit > 0 ? 'text-green-600' : 'text-slate-700'}`}>R$ {netProfit.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

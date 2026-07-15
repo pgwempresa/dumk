@@ -1,0 +1,6 @@
+{
+  "name": "Dudamakes Precificação",
+  "description": "Sistema de precificação simples e prático para e-commerce.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
